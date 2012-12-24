@@ -55,7 +55,7 @@ class Cah(callbacks.Plugin):
 
     class CahGame(object):
         """docstring for Game"""
-        def __init__(self, irc, channel, numrounds = 5):
+        def __init__(self, irc, channel, numrounds = 5, voteRules = True):
             self.irc = irc
             self.channel = channel
             self.game = None
@@ -69,7 +69,10 @@ class Cah(callbacks.Plugin):
             self.players = []
             self.acceptingWhiteCards = False
             self.cardsPlayed = {}
-        
+            self.currentCzar = None
+            self.CzarOrder = []
+            self.voteRules = voteRules
+                  
         def initGame(self):
             schedule.addEvent(self.startgame, time.time() + 60, "start_game_%s" % self.channel)
 
@@ -98,7 +101,6 @@ class Cah(callbacks.Plugin):
             responses = []
             response = "%s"
             for count, nick in enumerate(self.cardsPlayed.keys()):
-                cardText = []
                 cards = ", ".join([ircutils.bold(card.text) for card in self.cardsPlayed[nick]])
                 responses.append(responseTemplate % (count + 1, cards))
             response = ";  ".join(responses)
@@ -121,7 +123,6 @@ class Cah(callbacks.Plugin):
 
 
         def _tallyVotes(self, votes):
-            ties = []
             winningCanidate = []
             canidatesById = []
             for nick in self.cardsPlayed.keys():
@@ -217,13 +218,26 @@ class Cah(callbacks.Plugin):
                     self._msg(channel, "Card Submittion Completed.")
                     self._printBlackCard(channel)
                     self._displayPlayedCards()
-                    self.startcardvote()
+                    if self.isVotingGame:
+                        self.startcardvote()
+                    else:
+                        self.startcardczar()
                 else:
-                    self_msg(channel, "No round active.")
+                    self._msg(channel, "No round active.")
             except KeyError:
-                self_msg(channel, "A Game is not running.")
+                self._msg(channel, "A Game is not running.")
 
         ###### END GAME LOGIC #########
+
+        ###### CARD CZAR LOGIC ########
+
+
+        def startcardczar():
+            self._msg(channel, "%s is the card Czar!  He gets to choose the card", self.currentCzar)
+
+
+        ###### END CARD CZAR LOGIC ####
+
 
         ###### VOTING ##############
 
