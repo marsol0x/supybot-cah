@@ -364,7 +364,7 @@ class Cah(callbacks.Plugin):
 
 
 
-    def _startCah(self, channel, rounds = 5, voting = True):
+    def _startCah(self, irc, channel, rounds = 5, voting = True):
         if channel in self.games:
             irc.reply("There is a game running currently.")
         else:
@@ -380,7 +380,7 @@ class Cah(callbacks.Plugin):
             numrounds = 5
         else:
             numrounds = int(args[0])
-        self._startCah(channel,rounds=numrounds, voting=False)
+        self._startCah(irc, channel,rounds=numrounds, voting=False)
     #voting rules
     def iah(self, irc, msg, args):
         """Starts a cards against humanity game, takes
@@ -391,7 +391,7 @@ class Cah(callbacks.Plugin):
             numrounds = 5
         else:
             numrounds = int(args[0])
-        self._startCah(channel, rounds=numrounds)
+        self._startCah(irc, channel, rounds=numrounds)
 
 
             
