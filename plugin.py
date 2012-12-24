@@ -369,7 +369,7 @@ class Cah(callbacks.Plugin):
             irc.reply("There is a game running currently.")
         else:
             irc.reply("Who wants to play IRC Aganst Humanity? To play reply with: @playing", prefixNick=False)
-            self.games[channel] = self.CahGame(irc, channel, numrounds)
+            self.games[channel] = self.CahGame(irc, channel, rounds)
             self.games[channel].initGame()
 
     # Traditional rules, Maybe switch this to arguements?        
