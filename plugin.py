@@ -35,7 +35,7 @@ import supybot.ircmsgs as ircmsgs
 import supybot.schedule as schedule
 import supybot.callbacks as callbacks
 
-from random import randint
+from random import randint, shuffle
 
 import operator 
 
@@ -70,7 +70,7 @@ class Cah(callbacks.Plugin):
             self.acceptingWhiteCards = False
             self.cardsPlayed = {}
             self.currentCzar = None
-            self.CzarOrder = []
+            self.czarOrder = None
             self.voteRules = voteRules
 
         def initGame(self):
@@ -78,10 +78,10 @@ class Cah(callbacks.Plugin):
 
         ###### UTIL METHODS ##########
 
-        def _formatWhiteCard(text):
+        def _formatWhiteCard(self, text):
             return ircutils.bold(ircutils.mircColor(text, bg="white", fg="black"))
 
-        def _formatBlackCard(text):
+        def _formatBlackCard(self, text):
             return ircutils.bold(ircutils.mircColor(text, bg="black", fg="white"))
       
         def _msg(self, recip, msg):
@@ -164,6 +164,8 @@ class Cah(callbacks.Plugin):
                 if len(game.players) < 2:
                     self._msg(channel, "I need more players.")
                 else:
+                    if game.voteRules:
+                        game.nextCardCzar()
                     game.canStart = False
                     game.running = True
                     game.game = Game(game.players, game.rounds)
@@ -236,13 +238,46 @@ class Cah(callbacks.Plugin):
             except KeyError:
                 self._msg(channel, "A Game is not running.")
 
+        def roundwinner(self, winner):
+            self.game.roundwinner(nick)
+            self._msg(self.channel, "%s wins the round!" % ircutils.bold(winner))
+
+
         ###### END GAME LOGIC #########
 
         ###### CARD CZAR LOGIC ########
 
+        def nextCardCzar(self):
+            if self.czarOrder is None:
+                self.czarOrder = shuffle(self.players)
+            self.currentCzar = self.czarOrder.pop(0)
+            self.czarOrder.append(self.currentCzar)
 
-        def startcardczar():
-            self._msg(channel, "%s is the card Czar!  He gets to choose the card", self.currentCzar)
+
+
+        def startcardczar(self):
+            
+            self._msg(self.channel, "%s is the card Czar! %s has 60 seconds to choose the winner", self.currentCzar)
+            schedule.addEvent(self.randomczar, time.time() + 60, "czar_%s" % channel)
+
+
+        def randomczar(self):
+            self._msg("%s took too long to respond like an idiot, so I am choosing the winner." % self.currentCzar)
+            endcardczar(randint(0, len(self.cardsPlayed)))
+
+        def endcardczar(self, winner):
+            #this could be better
+            try:
+                schedule.removeEvent("czar_%s" % channel)
+            except:
+                pass
+            for count, nick in enumerate(self.cardsPlayed.keys()):
+                if count == winner:
+                    self.nextCardCzar()
+                    self.roundwinner(nick)
+                    self.nextround()
+
+
 
 
         ###### END CARD CZAR LOGIC ####
@@ -273,7 +308,7 @@ class Cah(callbacks.Plugin):
                 print winner
                 game.game.end_round(winner[0][0], self.cardsPlayed)
                 game.voted = []
-                game._msg(self.channel, "%s wins the round!" % ircutils.bold(winner[0][0]))
+                self.roundwinner(winner[0][0])
                 #game._msg(self.channel, "%s wins the round with %s" % (ircutils.bold(winner[0][0]), ircutils.bold(filledCard)))
                 game.nextround()
          
@@ -327,7 +362,27 @@ class Cah(callbacks.Plugin):
         else:
             irc.reply("Game not running.")
 
+
+
+    def _startCah(self, channel, rounds = 5, voting = True):
+        if channel in self.games:
+            irc.reply("There is a game running currently.")
+        else:
+            irc.reply("Who wants to play IRC Aganst Humanity? To play reply with: @playing", prefixNick=False)
+            self.games[channel] = self.CahGame(irc, channel, numrounds)
+            self.games[channel].initGame()
+
+    # Traditional rules, Maybe switch this to arguements?        
     def cah(self, irc, msg, args):
+        channel = ircutils.toLower(msg.args[0])
+        #TODO: this is prob needs fixing. 
+        if len(args) < 1:
+            numrounds = 5
+        else:
+            numrounds = int(args[0])
+        self._startCah(channel,rounds=numrounds, voting=False)
+    #voting rules
+    def iah(self, irc, msg, args):
         """Starts a cards against humanity game, takes
         an optional arguement of number of rounds"""
         channel = ircutils.toLower(msg.args[0])
@@ -336,13 +391,9 @@ class Cah(callbacks.Plugin):
             numrounds = 5
         else:
             numrounds = int(args[0])
+        self._startCah(channel, rounds=numrounds)
 
-        if channel in self.games:
-            irc.reply("There is a game running currently.")
-        else:
-            irc.reply("Who wants to play IRC Aganst Humanity? To play reply with: @playing", prefixNick=False)
-            self.games[channel] = self.CahGame(irc, channel, numrounds)
-            self.games[channel].initGame()
+
             
 
 
@@ -378,6 +429,23 @@ class Cah(callbacks.Plugin):
             irc.reply("Game not running.")
         #TODO: Card decision logic
 
+    def pickwinner(self, irc, msg, args):
+        channel = ircutils.toLower(msg.args[0])
+        if channel in self.games:
+            game = self.games[channel]
+            if msg.nick == self.currentCzar:
+                if len(args) < 0:
+                    irc.reply("I need a fucking winner you idiot.")
+                elif args[0] < 1 or args[0] > len(game.cardsPlayed()) - 1:
+                     irc.reply("I need a value between 1 and %s" % len(game.cardsPlayed))
+                else:
+                    game.endcardczar(args[0])
+            else:
+                irc.reply("You are not the Czar GET OUT")
+        else:
+            irc.reply("Game not running.")
+
+
     def votecard(self, irc, msg, args):
         channel = ircutils.toLower(msg.args[0])
         if channel in self.games:
@@ -410,7 +478,7 @@ class Cah(callbacks.Plugin):
                 schedule.removeEvent("vote_%s" % self.channel)
             except:
                 pass
-            self.games[channel].endvote()
+            self.games[channel].stopcardvote()
         else:
             irc.reply("Game not running.")
 
