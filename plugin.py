@@ -72,28 +72,37 @@ class Cah(callbacks.Plugin):
             self.currentCzar = None
             self.CzarOrder = []
             self.voteRules = voteRules
-                  
+
         def initGame(self):
             schedule.addEvent(self.startgame, time.time() + 60, "start_game_%s" % self.channel)
 
         ###### UTIL METHODS ##########
+
+        def _formatWhiteCard(text):
+            return ircutils.bold(ircutils.mircColor(text, bg="white", fg="black"))
+
+        def _formatBlackCard(text):
+            return ircutils.bold(ircutils.mircColor(text, bg="black", fg="white"))
       
         def _msg(self, recip, msg):
             self.irc.queueMsg(ircmsgs.privmsg(recip,msg))
         
         def _printBlackCard(self, recip):
-            response = "Question: %s"
+            response = "Round %d of %d Question: %s"
             cah = self.game
-            self._msg(recip, ircutils.mircColor(response % cah.question.text, bg="black", fg="white"))
+            self._msg(recip, response % (cah.round ,cah.round_limit, self._formatBlackCard(cah.question.text)))
 
         def _msgHandToPlayer(self, nick):
             response = "Your cards: %s  Please respond with @playcard [channel if in pm] <number> [number]"
             enumeratedHand = []
             cah = self.game
-            for position, card in enumerate(cah.players[nick].card_list):
-                enumeratedHand.append("%s: %s " % (position + 1, ircutils.bold(card.text)))
             self._printBlackCard(nick)
-            self._msg(nick, ircutils.mircColor(response % ', '.join(enumeratedHand), bg="white", fg="black"))
+            if self.voteRules and self.currentCzar == nick:
+                self._msg(nick, ircutils.bold("YOU are the Card Czar, you get to pick the winner, so no hand for you!"))
+            else:
+                for position, card in enumerate(cah.players[nick].card_list):
+                    enumeratedHand.append("%s: %s " % (position + 1, ircutils.bold(card.text)))
+                self._msg(nick, self._formatWhiteCard(response % ', '.join(enumeratedHand)))
 
         def _displayPlayedCards(self):
             channel = self.channel
@@ -101,7 +110,7 @@ class Cah(callbacks.Plugin):
             responses = []
             response = "%s"
             for count, nick in enumerate(self.cardsPlayed.keys()):
-                cards = ", ".join([ircutils.bold(card.text) for card in self.cardsPlayed[nick]])
+                cards = ", ".join([self._formatWhiteCard(card.text) for card in self.cardsPlayed[nick]])
                 responses.append(responseTemplate % (count + 1, cards))
             response = ";  ".join(responses)
             self._msg(channel, "Played White cards: %s" % response)
