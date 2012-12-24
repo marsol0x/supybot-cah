@@ -248,6 +248,8 @@ class Cah(callbacks.Plugin):
         ###### CARD CZAR LOGIC ########
 
         def nextCardCzar(self):
+            if self.czarOrder == None:
+                self.czarOrder = []
             if len(self.czarOrder) == 0:
                 self.czarOrder = shuffle(self.players)
             self.currentCzar = self.czarOrder.pop(0)
