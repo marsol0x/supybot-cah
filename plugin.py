@@ -70,7 +70,7 @@ class Cah(callbacks.Plugin):
             self.acceptingWhiteCards = False
             self.cardsPlayed = {}
             self.currentCzar = None
-            self.czarOrder = None
+            self.czarOrder = []
             self.voteRules = voteRules
 
         def initGame(self):
@@ -248,7 +248,7 @@ class Cah(callbacks.Plugin):
         ###### CARD CZAR LOGIC ########
 
         def nextCardCzar(self):
-            if self.czarOrder is None:
+            if len(self.czarOrder) == 0:
                 self.czarOrder = shuffle(self.players)
             self.currentCzar = self.czarOrder.pop(0)
             self.czarOrder.append(self.currentCzar)
