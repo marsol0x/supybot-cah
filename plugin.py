@@ -164,7 +164,7 @@ class Cah(callbacks.Plugin):
                 if len(game.players) < 2:
                     self._msg(channel, "I need more players.")
                 else:
-                    if game.voteRules:
+                    if not game.voteRules:
                         game.nextCardCzar()
                     game.canStart = False
                     game.running = True
@@ -369,7 +369,7 @@ class Cah(callbacks.Plugin):
             irc.reply("There is a game running currently.")
         else:
             irc.reply("Who wants to play IRC Aganst Humanity? To play reply with: @playing", prefixNick=False)
-            self.games[channel] = self.CahGame(irc, channel, rounds)
+            self.games[channel] = self.CahGame(irc, channel, numrounds=rounds, voteRules=voting)
             self.games[channel].initGame()
 
     # Traditional rules, Maybe switch this to arguements?        
